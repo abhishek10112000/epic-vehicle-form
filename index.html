@@ -1422,15 +1422,22 @@
             <input id="nu-email" type="email" placeholder="e.g. john@epiccars.in"
                    autocomplete="off"/></div>
           <div class="field"><label>Password</label>
-            <div style="position:relative;">
-              <input id="nu-password" type="text"
-                     placeholder="Set a password (min 4 chars)"
-                     autocomplete="new-password"
-                     style="padding-right:40px;font-family:'DM Mono',monospace;letter-spacing:1px;"/>
-              <button type="button" onclick="toggleNewUserPw()"
-                style="position:absolute;right:8px;top:50%;transform:translateY(-50%);
-                       background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;"
-                title="Show/hide password" id="nu-pw-eye">👁</button>
+            <!-- Hidden field that browser won't autofill (random name) -->
+            <input id="nu-password" type="password"
+                   name="new-pw-field-xzq"
+                   autocomplete="new-password"
+                   placeholder="Set a password (min 4 chars)"
+                   style="padding-right:44px;"
+                   oninput="syncPwDisplay(this)"/>
+            <div id="nu-pw-display"
+                 style="margin-top:6px;padding:7px 12px;background:var(--surface2);
+                        border:1px solid var(--border);border-radius:var(--radius);
+                        font-family:'DM Mono',monospace;font-size:12px;
+                        color:#22c55e;letter-spacing:1px;min-height:34px;word-break:break-all;"
+                 title="This is exactly what will be saved as the password">
+            </div>
+            <div style="font-size:10px;color:var(--muted);margin-top:4px;">
+              ↑ Password preview — this is exactly what will be saved
             </div>
           </div>
           <div class="field"><label>Role</label>
@@ -1470,11 +1477,15 @@
 
       <!-- Users list — Admin only -->
       <div class="card admin-only-card">
-        <div class="card-title" style="color:#a855f7;">👥 All Users</div>
+        <div class="card-title" style="color:#a855f7;display:flex;align-items:center;justify-content:space-between;">
+          <span>👥 All Users</span>
+          <button class="btn btn-ghost" style="padding:4px 12px;font-size:11px;"
+                  onclick="togglePasswordCol(this)">👁 Show Passwords</button>
+        </div>
         <div style="overflow-x:auto;">
           <table class="records-table">
             <thead>
-              <tr><th>#</th><th>Name</th><th>Username</th><th>Role</th><th>Actions</th></tr>
+              <tr><th>Name</th><th>Username</th><th>Role</th><th class="pw-col" style="display:none;">Password</th><th>Actions</th></tr>
             </thead>
             <tbody id="users-tbody"></tbody>
           </table>

@@ -211,6 +211,15 @@ function togglePw() {
 /* ═══════════════════════════════════════
    USER MANAGEMENT
 ═══════════════════════════════════════ */
+/* Show exactly what's in the password field so admin can verify */
+function syncPwDisplay(input) {
+  var display = document.getElementById('nu-pw-display');
+  if (display) {
+    display.textContent = input.value || '';
+    display.style.color = input.value.length >= 4 ? '#22c55e' : '#ef4444';
+  }
+}
+
 function toggleNewUserPw() {
   var f   = document.getElementById('nu-password');
   var eye = document.getElementById('nu-pw-eye');
@@ -219,12 +228,19 @@ function toggleNewUserPw() {
   if (eye) eye.textContent = (f.type === 'text') ? '🙈' : '👁';
 }
 
+function togglePasswordCol(btn) {
+  var cols = document.querySelectorAll('.pw-col');
+  var showing = btn.textContent.indexOf('Hide') > -1;
+  cols.forEach(function(c) { c.style.display = showing ? 'none' : ''; });
+  btn.textContent = showing ? '👁 Show Passwords' : '🙈 Hide Passwords';
+}
+
 function renderUserTable() {
   var tb = document.getElementById('users-tbody');
   if (!tb) return;
   var users = epicGetUsers();
   if (!users.length) {
-    tb.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px;">No users found.</td></tr>';
+    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px;">No users found.</td></tr>';
     return;
   }
   var html = '';
@@ -238,6 +254,7 @@ function renderUserTable() {
       + '<td>' + u.name + '</td>'
       + '<td><code style="color:var(--accent)">' + u.username + '</code></td>'
       + '<td><span class="role-badge role-' + u.role + '">' + u.role.toUpperCase() + '</span></td>'
+      + '<td class="pw-col" style="display:none;"><code style="color:#f59e0b;font-size:12px;">' + (u.password || '—') + '</code></td>'
       + '<td style="display:flex;gap:6px;flex-wrap:wrap;">' + actions + '</td>'
       + '</tr>';
   }
@@ -325,12 +342,14 @@ function addUser() {
   if (unEl)    unEl.value    = '';
   if (pwEl)    pwEl.value    = '';
   if (emailEl) emailEl.value = '';
+  var display = document.getElementById('nu-pw-display');
+  if (display) display.textContent = '';
 
   renderUserTable();
 
-  /* ── Green success message with credentials ── */
+  /* ── Green success message — show EXACT saved password ── */
   err.style.color = '#22c55e';
-  err.textContent = '✓ User "' + name + '" created! Login: ' + un + ' / ' + pw;
+  err.textContent = '✓ User "' + name + '" created! Login: ' + un + ' / ' + found.password;
   setTimeout(function() { err.textContent = ''; }, 10000);
 
   console.log('[EPIC] addUser: new user saved →', un, '/', role);
