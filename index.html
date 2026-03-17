@@ -160,7 +160,7 @@
     <div class="nav-item" onclick="showSection('savedpdfs', this); renderPDFList();"><span class="dot" style="background:#3b82f6"></span>📁 Saved PDFs</div>
 
     <div class="sidebar-label" style="margin-top:8px;">Account</div>
-    <div class="nav-item" id="nav-usermgmt" onclick="showSection('users', this); renderUserTable();"><span class="dot" style="background:#a855f7"></span>👥 Users &amp; Password</div>
+    <div class="nav-item" id="nav-usermgmt" onclick="showSection('users', this); renderUserTable(); renderSlots();"><span class="dot" style="background:#a855f7"></span>👥 Users &amp; Password</div>
 
     <div class="sidebar-label" style="margin-top:20px;">Progress</div>
     <div style="padding: 0 20px 8px;">
@@ -1472,6 +1472,30 @@
               <tr><td>Manage Users</td>               <td>✅</td><td>❌</td></tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- ══ STAFF SLOTS — Admin only ══ -->
+      <div class="card admin-only-card" style="border-color:rgba(232,51,58,0.3);background:#130a0b;">
+        <div class="card-title" style="color:var(--accent);">
+          🎫 Staff Login Slots
+          <span style="font-size:10px;font-weight:400;color:var(--muted);margin-left:8px;">
+            10 pre-made logins — assign to your team members
+          </span>
+        </div>
+
+        <p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6;">
+          These slots have fixed usernames and passwords. Admin can assign a <strong style="color:var(--text);">real name</strong> to each slot so you know who is using it.
+          The person logs in with the slot credentials — their performance is tracked under their assigned name.
+        </p>
+
+        <div class="slots-grid" id="slots-grid">
+          <!-- Rendered by JS -->
+        </div>
+
+        <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-ghost" style="font-size:12px;" onclick="renderSlots()">↺ Refresh</button>
+          <button class="btn btn-secondary" style="font-size:12px;" onclick="exportSlots()">⬇ Export Slots as PDF</button>
         </div>
       </div>
 

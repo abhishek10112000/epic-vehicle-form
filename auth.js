@@ -497,30 +497,269 @@ function renderPDFList() {
 }
 
 /* ═══════════════════════════════════════
+   STAFF SLOTS SYSTEM
+   10 pre-made login slots.
+   Admin assigns real names to slots.
+   Visible only to admin.
+═══════════════════════════════════════ */
+
+var EPIC_KEY_SLOTS = 'epicSlots';
+
+/* 10 fixed slot usernames — only usernames are fixed, passwords can be changed */
+var SLOT_DEFAULTS = [
+  { slot:1,  username:'epic_s01', defaultPassword:'Epic@S01' },
+  { slot:2,  username:'epic_s02', defaultPassword:'Epic@S02' },
+  { slot:3,  username:'epic_s03', defaultPassword:'Epic@S03' },
+  { slot:4,  username:'epic_s04', defaultPassword:'Epic@S04' },
+  { slot:5,  username:'epic_s05', defaultPassword:'Epic@S05' },
+  { slot:6,  username:'epic_s06', defaultPassword:'Epic@S06' },
+  { slot:7,  username:'epic_s07', defaultPassword:'Epic@S07' },
+  { slot:8,  username:'epic_s08', defaultPassword:'Epic@S08' },
+  { slot:9,  username:'epic_s09', defaultPassword:'Epic@S09' },
+  { slot:10, username:'epic_s10', defaultPassword:'Epic@S10' },
+];
+
+/* Get current password for a slot — custom if set, else default */
+function getSlotPassword(slotNum) {
+  var slots = getSlots();
+  return (slots[slotNum] && slots[slotNum].password) || SLOT_DEFAULTS[slotNum-1].defaultPassword;
+}
+
+function getSlots() {
+  try {
+    var s = localStorage.getItem(EPIC_KEY_SLOTS);
+    return s ? JSON.parse(s) : {};
+  } catch(e) { return {}; }
+}
+
+function saveSlots(obj) {
+  localStorage.setItem(EPIC_KEY_SLOTS, JSON.stringify(obj));
+}
+
+/* ── Ensure all 10 slot users exist in epicUsers ──
+   Always uses the password stored in epicSlots (custom or default).
+   If user already exists, syncs password from slots in case it changed. */
+function ensureSlotUsers() {
+  var users   = epicGetUsers();
+  var slots   = getSlots();
+  var changed = false;
+
+  SLOT_DEFAULTS.forEach(function(sd) {
+    var pw       = (slots[sd.slot] && slots[sd.slot].password) || sd.defaultPassword;
+    var name     = (slots[sd.slot] && slots[sd.slot].assignedTo) || ('Slot ' + sd.slot);
+    var existing = users.findIndex(function(u) { return u.username === sd.username; });
+
+    if (existing === -1) {
+      /* Not found — create it */
+      users.push({
+        id:       sd.slot * -1,
+        name:     name,
+        username: sd.username,
+        email:    '',
+        password: pw,
+        role:     'staff',
+        isSlot:   true,
+        slotNum:  sd.slot
+      });
+      changed = true;
+    } else {
+      /* Found — sync password and name in case they changed */
+      if (users[existing].password !== pw || users[existing].name !== name) {
+        users[existing] = Object.assign({}, users[existing], { password: pw, name: name });
+        changed = true;
+      }
+    }
+  });
+
+  if (changed) epicSaveUsers(users);
+}
+
+/* ── Assign a name to a slot ── */
+function assignSlot(slotNum) {
+  var nameEl = document.getElementById('slot-name-' + slotNum);
+  if (!nameEl) return;
+  var val = nameEl.value.trim();
+  if (!val) { showToast('Enter a name first'); return; }
+
+  var slots = getSlots();
+  slots[slotNum] = slots[slotNum] || {};
+  slots[slotNum].assignedTo = val;
+  saveSlots(slots);
+
+  ensureSlotUsers();
+  renderSlots();
+  showToast('Slot ' + slotNum + ' assigned to ' + val);
+}
+
+/* ── Clear slot assignment ── */
+function clearSlot(slotNum) {
+  var slots = getSlots();
+  if (slots[slotNum]) {
+    delete slots[slotNum].assignedTo;
+  }
+  saveSlots(slots);
+  ensureSlotUsers();
+  renderSlots();
+  showToast('Slot ' + slotNum + ' cleared');
+}
+
+/* ── Change password for a slot ── */
+function changeSlotPassword(slotNum) {
+  var pwEl = document.getElementById('slot-pw-' + slotNum);
+  if (!pwEl) return;
+  var pw = pwEl.value.trim();
+
+  if (!pw)         { showToast('Enter a new password'); return; }
+  if (pw.length < 4) { showToast('Password must be at least 4 characters'); return; }
+
+  var slots = getSlots();
+  slots[slotNum] = slots[slotNum] || {};
+  slots[slotNum].password = pw;
+  saveSlots(slots);
+
+  /* Sync to epicUsers immediately */
+  ensureSlotUsers();
+
+  pwEl.value = '';
+  renderSlots();
+  showToast('✓ Slot ' + slotNum + ' password changed to: ' + pw);
+}
+
+/* ── Reset slot password back to default ── */
+function resetSlotPassword(slotNum) {
+  if (!confirm('Reset slot ' + slotNum + ' password back to default (' + SLOT_DEFAULTS[slotNum-1].defaultPassword + ')?')) return;
+
+  var slots = getSlots();
+  if (slots[slotNum]) delete slots[slotNum].password;
+  saveSlots(slots);
+
+  ensureSlotUsers();
+  renderSlots();
+  showToast('Slot ' + slotNum + ' password reset to default');
+}
+
+/* ── Render all 10 slots ── */
+function renderSlots() {
+  var grid = document.getElementById('slots-grid');
+  if (!grid) return;
+
+  ensureSlotUsers();
+
+  var slots = getSlots();
+
+  var html = SLOT_DEFAULTS.map(function(sd) {
+    var slotData    = slots[sd.slot] || {};
+    var assigned    = slotData.assignedTo || '';
+    var currentPw   = slotData.password || sd.defaultPassword;
+    var isCustomPw  = !!slotData.password;
+    var isAssigned  = !!assigned;
+
+    return '<div class="slot-card' + (isAssigned ? ' slot-assigned' : '') + '">'
+
+      /* Header */
+      + '<div class="slot-header">'
+      + '  <span class="slot-num">S' + String(sd.slot).padStart(2,'0') + '</span>'
+      + '  <span class="slot-status">' + (isAssigned ? '🟢 ' + assigned : '⚪ Free') + '</span>'
+      + '</div>'
+
+      /* Current credentials */
+      + '<div class="slot-creds">'
+      + '  <div class="slot-cred-row"><span>Username</span><code>' + sd.username + '</code></div>'
+      + '  <div class="slot-cred-row"><span>Password</span>'
+      + '    <code style="color:' + (isCustomPw ? '#22c55e' : '#f59e0b') + '">' + currentPw + '</code>'
+      + '    <span style="font-size:9px;color:var(--muted);margin-left:4px;">' + (isCustomPw ? '(custom)' : '(default)') + '</span>'
+      + '  </div>'
+      + '</div>'
+
+      /* Assign name row */
+      + '<div class="slot-section-label">👤 Assign to person</div>'
+      + '<div class="slot-assign-row">'
+      + '  <input id="slot-name-' + sd.slot + '" type="text" class="slot-name-input"'
+      + '    placeholder="Person\'s name" value="' + (assigned || '') + '" autocomplete="off"'
+      + '    onkeydown="if(event.key===\'Enter\')assignSlot(' + sd.slot + ')"/>'
+      + '  <button class="btn btn-primary" style="padding:5px 12px;font-size:11px;" onclick="assignSlot(' + sd.slot + ')">✓</button>'
+      + (isAssigned ? '<button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;color:#ef4444;border-color:#ef444440;" onclick="clearSlot(' + sd.slot + ')">✕</button>' : '')
+      + '</div>'
+
+      /* Change password row */
+      + '<div class="slot-section-label" style="margin-top:10px;">🔑 Change Password</div>'
+      + '<div class="slot-assign-row">'
+      + '  <input id="slot-pw-' + sd.slot + '" type="text" class="slot-name-input"'
+      + '    placeholder="New password (min 4 chars)" autocomplete="off"'
+      + '    style="font-family:\'DM Mono\',monospace;font-size:12px;"'
+      + '    onkeydown="if(event.key===\'Enter\')changeSlotPassword(' + sd.slot + ')"/>'
+      + '  <button class="btn btn-secondary" style="padding:5px 12px;font-size:11px;" onclick="changeSlotPassword(' + sd.slot + ')">Set</button>'
+      + (isCustomPw ? '<button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" title="Reset to default" onclick="resetSlotPassword(' + sd.slot + ')">↺</button>' : '')
+      + '</div>'
+
+      + '</div>';
+  }).join('');
+
+  grid.innerHTML = html;
+}
+
+/* ── Export slots as printable page ── */
+function exportSlots() {
+  ensureSlotUsers();
+  var slots = getSlots();
+  var rows  = SLOT_DEFAULTS.map(function(sd) {
+    var assigned = (slots[sd.slot] && slots[sd.slot].assignedTo) || '—';
+    var pw       = (slots[sd.slot] && slots[sd.slot].password)   || sd.defaultPassword;
+    return '<tr>'
+      + '<td>S' + String(sd.slot).padStart(2,'0') + '</td>'
+      + '<td>' + assigned + '</td>'
+      + '<td><code>' + sd.username + '</code></td>'
+      + '<td><code>' + pw + '</code></td>'
+      + '</tr>';
+  }).join('');
+
+  var win = window.open('', '_blank');
+  win.document.write(
+    '<html><head><title>EPIC Staff Login Slots</title>'
+    + '<style>body{font-family:sans-serif;padding:24px;}'
+    + 'table{border-collapse:collapse;width:100%;}'
+    + 'th,td{border:1px solid #ccc;padding:10px 14px;text-align:left;}'
+    + 'th{background:#f0f0f0;font-size:12px;letter-spacing:1px;}'
+    + 'code{background:#f5f5f5;padding:2px 6px;border-radius:3px;font-size:13px;}'
+    + 'h2{margin-bottom:4px;} p{color:#666;margin-bottom:20px;font-size:13px;}'
+    + '@media print{button{display:none}}'
+    + '</style></head><body>'
+    + '<h2>🚗 EPIC Cars — Staff Login Slots</h2>'
+    + '<p>Generated: ' + new Date().toLocaleString('en-IN')
+    + '&nbsp;|&nbsp; <strong>Admin use only — do not share publicly</strong></p>'
+    + '<table><thead><tr><th>SLOT</th><th>ASSIGNED TO</th><th>USERNAME</th><th>PASSWORD</th></tr></thead>'
+    + '<tbody>' + rows + '</tbody></table>'
+    + '<br/><button onclick="window.print()" style="padding:8px 20px;font-size:14px;cursor:pointer;">🖨 Print</button>'
+    + '</body></html>'
+  );
+  win.document.close();
+}
+
+/* ═══════════════════════════════════════
    EXPORT / IMPORT USERS
    Solves cross-browser/profile sync issue
 ═══════════════════════════════════════ */
 function exportUsers() {
   var users = epicGetUsers();
+  var slots = getSlots();
   var data  = {
     _epic_export: true,
-    _version:     1,
+    _version:     2,
     _exportedAt:  new Date().toISOString(),
     _exportedBy:  (currentUser() || {}).name || 'Admin',
-    users:        users
+    users:        users,
+    slots:        slots       /* includes custom passwords + assignments */
   };
 
   var json = JSON.stringify(data, null, 2);
   var blob = new Blob([json], { type: 'application/json' });
   var url  = URL.createObjectURL(blob);
   var a    = document.createElement('a');
-  var date = new Date().toISOString().slice(0,10);
   a.href     = url;
-  a.download = 'epic_users_' + date + '.json';
+  a.download = 'epic_users_' + new Date().toISOString().slice(0,10) + '.json';
   a.click();
   URL.revokeObjectURL(url);
-
-  showToast('Users exported! Copy the file to other browsers/devices.');
+  showToast('Exported! Copy file to other browsers to sync.');
 }
 
 function importUsers(input) {
@@ -528,64 +767,52 @@ function importUsers(input) {
   if (!file) return;
 
   var result = document.getElementById('import-result');
-  result.textContent    = 'Reading file...';
-  result.style.color    = 'var(--muted)';
+  result.textContent = 'Reading file...';
+  result.style.color = 'var(--muted)';
 
   var reader = new FileReader();
   reader.onload = function(e) {
     try {
       var data = JSON.parse(e.target.result);
 
-      /* Validate it's an EPIC export file */
       if (!data._epic_export || !Array.isArray(data.users)) {
-        result.textContent = '⚠ Invalid file. Please use a file exported from this app.';
+        result.textContent = '⚠ Invalid file. Use a file exported from this app.';
         result.style.color = 'var(--accent)';
         return;
       }
 
-      var imported = data.users;
-      if (!imported.length) {
-        result.textContent = '⚠ File has no users.';
-        result.style.color = 'var(--accent)';
-        return;
-      }
-
-      /* Merge: keep existing users, add any that don't exist by username */
+      /* Import users — merge, no duplicates */
       var existing = epicGetUsers();
-      var added    = 0;
-      var skipped  = 0;
-
-      imported.forEach(function(u) {
-        var alreadyExists = existing.some(function(e) {
-          return e.username === u.username;
-        });
-        if (alreadyExists) {
-          skipped++;
-        } else {
-          existing.push(u);
-          added++;
-        }
+      var added = 0, skipped = 0;
+      data.users.forEach(function(u) {
+        var exists = existing.some(function(e) { return e.username === u.username; });
+        if (exists) { skipped++; } else { existing.push(u); added++; }
       });
-
       epicSaveUsers(existing);
-      renderUserTable();
 
-      /* Reset file input so same file can be imported again if needed */
+      /* Import slot data (assignments + custom passwords) */
+      if (data.slots) {
+        var currentSlots = getSlots();
+        Object.keys(data.slots).forEach(function(k) {
+          currentSlots[k] = Object.assign({}, currentSlots[k] || {}, data.slots[k]);
+        });
+        saveSlots(currentSlots);
+        ensureSlotUsers();   /* sync new passwords into epicUsers */
+      }
+
       input.value = '';
+      renderUserTable();
+      renderSlots();
 
       result.style.color = '#22c55e';
-      result.textContent = '✓ Import complete! '
-        + added   + ' user' + (added   !== 1 ? 's' : '') + ' added, '
-        + skipped + ' already existed (skipped).';
-
-      showToast('Users imported successfully!');
+      result.textContent = '✓ Imported! ' + added + ' user(s) added, ' + skipped + ' skipped. Slot passwords/assignments also synced.';
+      showToast('Import complete!');
 
     } catch(err) {
       result.style.color = 'var(--accent)';
       result.textContent = '⚠ Could not read file: ' + err.message;
     }
   };
-
   reader.readAsText(file);
 }
 
@@ -595,6 +822,9 @@ function importUsers(input) {
 window.addEventListener('DOMContentLoaded', function() {
   /* 1. Seed defaults only if storage is completely empty */
   epicBootUsers();
+
+  /* 2. Ensure all 10 slot users exist */
+  ensureSlotUsers();
 
   /* 2. Enter key shortcuts */
   var unField = document.getElementById('login-username');

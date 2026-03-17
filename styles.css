@@ -1924,3 +1924,118 @@ body {
   .vl-filter-bar  { gap: 8px; }
   .vl-table th, .vl-table td { padding: 10px 12px; font-size: 12px; }
 }
+
+/* ══════════════════════════════
+   STAFF SLOTS SYSTEM
+══════════════════════════════ */
+.slots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.slot-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  transition: border-color 0.15s;
+}
+.slot-card.slot-assigned {
+  border-color: rgba(34,197,94,0.4);
+  background: #0a1a0a;
+}
+
+.slot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.slot-num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 20px;
+  color: var(--accent);
+  letter-spacing: 1px;
+}
+.slot-status {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.slot-creds {
+  background: #0a0a0a;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+}
+.slot-cred-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  padding: 2px 0;
+}
+.slot-cred-row span {
+  color: var(--muted);
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+.slot-cred-row code {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: #f59e0b;
+  background: rgba(245,158,11,0.1);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.slot-assign-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.slot-name-input {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  outline: none;
+  min-width: 0;
+}
+.slot-name-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(232,51,58,0.1);
+}
+
+.slot-assigned-label {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #22c55e;
+  padding: 4px 8px;
+  background: rgba(34,197,94,0.1);
+  border-radius: 6px;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .slots-grid { grid-template-columns: 1fr; }
+}
+
+.slot-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 5px;
+  margin-top: 2px;
+}
