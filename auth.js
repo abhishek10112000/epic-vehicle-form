@@ -497,6 +497,99 @@ function renderPDFList() {
 }
 
 /* ═══════════════════════════════════════
+   EXPORT / IMPORT USERS
+   Solves cross-browser/profile sync issue
+═══════════════════════════════════════ */
+function exportUsers() {
+  var users = epicGetUsers();
+  var data  = {
+    _epic_export: true,
+    _version:     1,
+    _exportedAt:  new Date().toISOString(),
+    _exportedBy:  (currentUser() || {}).name || 'Admin',
+    users:        users
+  };
+
+  var json = JSON.stringify(data, null, 2);
+  var blob = new Blob([json], { type: 'application/json' });
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  var date = new Date().toISOString().slice(0,10);
+  a.href     = url;
+  a.download = 'epic_users_' + date + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+
+  showToast('Users exported! Copy the file to other browsers/devices.');
+}
+
+function importUsers(input) {
+  var file = input.files[0];
+  if (!file) return;
+
+  var result = document.getElementById('import-result');
+  result.textContent    = 'Reading file...';
+  result.style.color    = 'var(--muted)';
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = JSON.parse(e.target.result);
+
+      /* Validate it's an EPIC export file */
+      if (!data._epic_export || !Array.isArray(data.users)) {
+        result.textContent = '⚠ Invalid file. Please use a file exported from this app.';
+        result.style.color = 'var(--accent)';
+        return;
+      }
+
+      var imported = data.users;
+      if (!imported.length) {
+        result.textContent = '⚠ File has no users.';
+        result.style.color = 'var(--accent)';
+        return;
+      }
+
+      /* Merge: keep existing users, add any that don't exist by username */
+      var existing = epicGetUsers();
+      var added    = 0;
+      var skipped  = 0;
+
+      imported.forEach(function(u) {
+        var alreadyExists = existing.some(function(e) {
+          return e.username === u.username;
+        });
+        if (alreadyExists) {
+          skipped++;
+        } else {
+          existing.push(u);
+          added++;
+        }
+      });
+
+      epicSaveUsers(existing);
+      renderUserTable();
+
+      /* Reset file input so same file can be imported again if needed */
+      input.value = '';
+
+      result.style.color = '#22c55e';
+      result.textContent = '✓ Import complete! '
+        + added   + ' user' + (added   !== 1 ? 's' : '') + ' added, '
+        + skipped + ' already existed (skipped).';
+
+      showToast('Users imported successfully!');
+
+    } catch(err) {
+      result.style.color = 'var(--accent)';
+      result.textContent = '⚠ Could not read file: ' + err.message;
+    }
+  };
+
+  reader.readAsText(file);
+}
+
+/* ═══════════════════════════════════════
    BOOT
 ═══════════════════════════════════════ */
 window.addEventListener('DOMContentLoaded', function() {
